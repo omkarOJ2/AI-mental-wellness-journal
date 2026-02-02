@@ -19,6 +19,11 @@ SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
+# Debug logging
+print(f"[DEBUG] MODE environment variable: {MODE}")
+print(f"[DEBUG] SUPABASE_URL exists: {bool(SUPABASE_URL)}")
+print(f"[DEBUG] SUPABASE_KEY exists: {bool(SUPABASE_KEY)}")
+
 # Initialize clients based on mode
 supabase = None
 openai_client = None
@@ -28,9 +33,12 @@ if MODE == 'cloud' and SUPABASE_URL and SUPABASE_KEY:
         from supabase import create_client, Client
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         print("[OK] Using Supabase (Cloud Mode)")
+        print(f"[DEBUG] Supabase client created successfully")
     except Exception as e:
-        print(f"[WARN] Supabase connection failed, falling back to SQLite: {e}")
+        print(f"[ERROR] Supabase connection failed, falling back to SQLite: {e}")
         MODE = 'local'
+else:
+    print(f"[WARN] Cloud mode requirements not met. MODE={MODE}, Has URL={bool(SUPABASE_URL)}, Has KEY={bool(SUPABASE_KEY)}")
 
 if MODE == 'local':
     print("[OK] Using SQLite (Local Mode)")
@@ -161,7 +169,7 @@ def signup():
                     return jsonify({'success': True, 'message': 'Account created! Please log in.'})
                 else:
                     return jsonify({'success': False, 'error': 'Failed to create account'}), 400
-            else:
+            elif MODE == 'local':
                 # Local SQLite user creation
                 db = get_db()
                 try:
@@ -172,8 +180,11 @@ def signup():
                     return jsonify({'success': True, 'message': 'Account created! Please log in.'})
                 except sqlite3.IntegrityError:
                     return jsonify({'success': False, 'error': 'Email already exists'}), 400
+            else:
+                return jsonify({'success': False, 'error': 'Database not configured'}), 500
         except Exception as e:
             error_message = str(e)
+            print(f"[ERROR] Signup failed: {error_message}")
             if 'already registered' in error_message.lower():
                 return jsonify({'success': False, 'error': 'Email already exists'}), 400
             return jsonify({'success': False, 'error': error_message}), 400
