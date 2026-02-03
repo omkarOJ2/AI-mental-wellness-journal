@@ -8,11 +8,12 @@ You must configure the following environment variables in the Vercel Dashboard (
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `MODE` | `cloud` | **CRITICAL**: Enables Supabase and disables SQLite |
+| **`MODE`** | **`cloud`** | **OPTIONAL BUT RECOMMENDED**: The app now auto-detects Vercel and forces cloud mode safely. |
 | `SUPABASE_URL` | `https://your-project.supabase.co` | Your Supabase Project URL |
 | `SUPABASE_KEY` | `your-anon-key` | Your Supabase Anon/Public Key |
 | `OPENAI_API_KEY` | `sk-...` | Your OpenAI API Key |
 | `FLASK_SECRET_KEY` | `your-random-string` | A secure random string for sessions |
+| **`VERCEL`** | **`1`** | **DO NOT REMOVE**: Vercel sets this automatically; the app uses it to disable SQLite. |
 
 ## 2. Deployment Steps
 
