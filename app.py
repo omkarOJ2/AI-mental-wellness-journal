@@ -36,19 +36,22 @@ print(f"[DEBUG] SUPABASE_KEY configured: {bool(SUPABASE_KEY)}")
 supabase = None
 openai_client = None
 
-if MODE == 'cloud' and SUPABASE_URL and SUPABASE_KEY:
-    try:
-        from supabase import create_client, Client
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("[OK] Using Supabase (Cloud Mode)")
-        print(f"[DEBUG] Supabase client created successfully")
-    except Exception as e:
-        print(f"[ERROR] Supabase connection failed, falling back to SQLite: {e}")
-        MODE = 'local'
-else:
-    print(f"[WARN] Cloud mode requirements not met. MODE={MODE}, Has URL={bool(SUPABASE_URL)}, Has KEY={bool(SUPABASE_KEY)}")
+if MODE == 'cloud':
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print(f"[ERROR] Missing Supabase configuration. URL: {bool(SUPABASE_URL)}, KEY: {bool(SUPABASE_KEY)}")
+    else:
+        try:
+            from supabase import create_client, Client
+            supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+            print("[OK] Using Supabase (Cloud Mode)")
+        except Exception as e:
+            print(f"[ERROR] Supabase client creation failed: {e}")
+            # On Vercel, we MUST stay in cloud mode to avoid SQLite permission errors
+            if not IS_VERCEL:
+                print("[INFO] Falling back to local mode")
+                MODE = 'local'
 
-# SQLite configuration
+# Always define database path for local mode
 DATABASE = 'journal.db'
 
 def get_db():
@@ -223,7 +226,16 @@ def signup():
             # Local SQLite user creation
             if MODE == 'local':
                 if IS_VERCEL:
-                    return jsonify({'success': False, 'error': 'Database Unavailable. Please set MODE=cloud and configure Supabase in Vercel settings.'}), 500
+                    missing_vars = []
+                    if not SUPABASE_URL: missing_vars.append("SUPABASE_URL")
+                    if not SUPABASE_KEY: missing_vars.append("SUPABASE_KEY")
+                    
+                    error_msg = "Database Unavailable on Vercel. "
+                    if missing_vars:
+                        error_msg += f"Missing Environment Variables: {', '.join(missing_vars)}. "
+                    error_msg += "Please add them in Vercel Dashboard > Settings > Environment Variables."
+                    
+                    return jsonify({'success': False, 'error': error_msg}), 500
                 
                 db = None
                 try:
