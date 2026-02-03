@@ -14,15 +14,23 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', secrets.token_hex(32))
 
 # Check mode: 'local' or 'cloud'
+# Robust check: If running on Vercel, force cloud mode
+IS_VERCEL = os.environ.get('VERCEL') == '1'
 MODE = os.getenv('MODE', 'local').lower()
+
+if IS_VERCEL:
+    print("[INFO] Running on Vercel - Forcing CLOUD mode")
+    MODE = 'cloud'
+
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Debug logging
-print(f"[DEBUG] MODE environment variable: {MODE}")
-print(f"[DEBUG] SUPABASE_URL exists: {bool(SUPABASE_URL)}")
-print(f"[DEBUG] SUPABASE_KEY exists: {bool(SUPABASE_KEY)}")
+print(f"[DEBUG] MODE: {MODE}")
+print(f"[DEBUG] VERCEL detected: {IS_VERCEL}")
+print(f"[DEBUG] SUPABASE_URL configured: {bool(SUPABASE_URL)}")
+print(f"[DEBUG] SUPABASE_KEY configured: {bool(SUPABASE_KEY)}")
 
 # Initialize clients based on mode
 supabase = None
@@ -140,12 +148,16 @@ def login():
                         raise Exception("Supabase auth failed")
                         
                 except Exception as supabase_error:
-                    # Fall back to local SQLite authentication
+                    # Fall back to local SQLite authentication ONLY if not on Vercel
+                    if IS_VERCEL or MODE == 'cloud':
+                        print(f"[ERROR] Supabase login failed: {supabase_error}")
+                        return jsonify({'success': False, 'error': f'Cloud login failed: {str(supabase_error)}'}), 400
+                    
                     print(f"[DEBUG] Supabase login failed: {supabase_error}, trying SQLite fallback")
                     pass  # Continue to SQLite check below
             
-            # Local SQLite authentication (or fallback from Supabase)
-            if MODE == 'local' or supabase:  # Always try SQLite as fallback
+            # Local SQLite authentication
+            if MODE == 'local':
                 db = get_db()
                 user = db.execute('SELECT * FROM users WHERE email = ? AND password = ?', 
                                 (email, password)).fetchone()
@@ -208,8 +220,11 @@ def signup():
                     else:
                         raise  # Re-raise if it's not a rate limit error
             
-            # Local SQLite user creation (or fallback from Supabase rate limit)
-            if MODE == 'local' or use_fallback:
+            # Local SQLite user creation
+            if MODE == 'local':
+                if IS_VERCEL:
+                    return jsonify({'success': False, 'error': 'Database Unavailable. Please set MODE=cloud and configure Supabase in Vercel settings.'}), 500
+                
                 db = None
                 try:
                     db = get_db()
@@ -218,12 +233,6 @@ def signup():
                               (email, password))
                     db.commit()
                     
-                    # If this was a fallback from Supabase, inform the user
-                    if use_fallback:
-                        return jsonify({
-                            'success': True, 
-                            'message': 'Account created locally! (Supabase temporarily unavailable)'
-                        })
                     return jsonify({'success': True, 'message': 'Account created! Please log in.'})
                 except sqlite3.IntegrityError:
                     if db:
@@ -233,12 +242,12 @@ def signup():
                     if db:
                         db.rollback()
                     print(f"[ERROR] Database operational error: {e}")
-                    return jsonify({'success': False, 'error': 'Database error. Please check file permissions.'}), 500
+                    return jsonify({'success': False, 'error': 'Database error. Vercel detected? Ensure MODE=cloud is set.'}), 500
                 finally:
                     if db:
                         db.close()
             else:
-                return jsonify({'success': False, 'error': 'Database not configured'}), 500
+                return jsonify({'success': False, 'error': 'Database not configured or unauthorized.'}), 500
         except Exception as e:
             error_message = str(e)
             print(f"[ERROR] Signup failed: {error_message}")
