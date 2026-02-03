@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-styles.css') }}?v=4.0">
+{% endblock %}
+{% block title %}Dashboard - Sentient Journal{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <nav class="navbar">
+        <div class="nav-brand">
+            <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+                <defs>
+                    <linearGradient id="navLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path
+                    d="M24 4C12.96 4 4 12.96 4 24C4 35.04 12.96 44 24 44C35.04 44 44 35.04 44 24C44 12.96 35.04 4 24 4Z"
+                    stroke="url(#navLogoGradient)" stroke-width="2.5" />
+                <path d="M24 16V24L29 29" stroke="url(#navLogoGradient)" stroke-width="2.5" />
+            </svg>
+            <span>Sentient Journal</span>
+        </div>
+        <div class="nav-actions">
+            <span class="user-email">{{ user.email }}</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-header">
+            <h1>Your Emotional Journey</h1>
+            <p class="dashboard-subtitle">Express yourself freely. We'll handle the insights. ✨</p>
+        </div>
+
+        <!-- Metrics Cards Row -->
+        <div class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #00BCD4 0%, #00ACC1 100%);">
+                    📊
+                </div>
+                <div class="metric-content">
+                    <div class="metric-label">Total Entries</div>
+                    <div class="metric-value" id="totalEntries">0</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);">
+                    😊
+                </div>
+                <div class="metric-content">
+                    <div class="metric-label">Positive Mood</div>
+                    <div class="metric-value" id="positiveMood">0%</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #2196F3 0%, #42A5F5 100%);">
+                    📝
+                </div>
+                <div class="metric-content">
+                    <div class="metric-label">This Week</div>
+                    <div class="metric-value" id="weeklyEntries">0</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);">
+                    🔥
+                </div>
+                <div class="metric-content">
+                    <div class="metric-label">Current Streak</div>
+                    <div class="metric-value" id="currentStreak">0 days</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="dashboard-tabs">
+            <button class="tab-btn active" onclick="switchTab('entry')">
+                📝 Today's Entry
+            </button>
+            <button class="tab-btn" onclick="switchTab('recent')">
+                📚 Recent Entries
+            </button>
+            <button class="tab-btn" onclick="switchTab('trends')">
+                📈 Emotional Trends
+            </button>
+            <button class="tab-btn" onclick="switchTab('report')">
+                📊 Weekly Report
+            </button>
+            <button class="tab-btn" onclick="switchTab('comparison')">
+                📊 Week Comparison
+            </button>
+            <button class="tab-btn" onclick="switchTab('export')">
+                📦 Export Data
+            </button>
+        </div>
+
+        <!-- Tab Content Container -->
+        <div class="tab-container">
+            <!-- Today's Entry Tab -->
+            <div id="tab-entry" class="tab-content active">
+                <div class="card">
+                    <h2>📝 Today's Entry</h2>
+                    <form id="journalForm">
+                        <div class="voice-controls">
+                            <select id="voiceLangSelect" class="voice-lang-select">
+                                <option value="en-US">🇺🇸 English (US)</option>
+                                <option value="en-IN">🇮🇳 English (India)</option>
+                                <option value="hi-IN">🇮🇳 हिन्दी (Hindi)</option>
+                                <option value="te-IN">🇮🇳 తెలుగు (Telugu)</option>
+                                <option value="ta-IN">🇮🇳 தமிழ் (Tamil)</option>
+                                <option value="mr-IN">🇮🇳 मराठी (Marathi)</option>
+                                <option value="bn-IN">🇮🇳 বাংলা (Bengali)</option>
+                                <option value="gu-IN">🇮🇳 ગુજરાતી (Gujarati)</option>
+                                <option value="kn-IN">🇮🇳 ಕನ್ನಡ (Kannada)</option>
+                                <option value="ml-IN">🇮🇳 മലയാളം (Malayalam)</option>
+                                <option value="pa-IN">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
+                            </select>
+                        </div>
+                        <div class="textarea-container">
+                            <textarea id="journalContent"
+                                placeholder="How are you feeling today? Write freely about your thoughts, experiences, and emotions..."
+                                rows="10"></textarea>
+                            <button type="button" id="voiceInputBtn" class="voice-input-btn" title="Voice Input">
+                                🎤
+                            </button>
+                        </div>
+                        <div class="character-counter" id="characterCounter">0 characters</div>
+
+                        <div id="analysisPreview" class="analysis-preview"></div>
+
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <span class="btn-text">Save & Analyze ✨</span>
+                            <span class="btn-loader"></span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <!-- End Today's Entry Tab -->
+
+            <!-- Weekly Report Tab -->
+            <div id="tab-report" class="tab-content">
+                <div class="card">
+                    <h2>📊 Weekly Report</h2>
+                    <button id="generateReportBtn" class="btn btn-secondary">
+                        Generate Weekly Insights 🔮
+                    </button>
+                    <div id="weeklyReport" class="weekly-report"></div>
+                </div>
+            </div>
+            <!-- End Weekly Report Tab -->
+
+            <!-- Recent Entries Tab -->
+            <div id="tab-recent" class="tab-content">
+                <div class="card">
+                    <h2>📚 Recent Entries</h2>
+                    <div class="search-filter-bar">
+                        <input type="text" id="searchInput" placeholder="Search entries..." class="search-input">
+                        <select id="sentimentFilter" class="filter-select">
+                            <option value="">All Moods</option>
+                            <option value="positive">Positive</option>
+                            <option value="neutral">Neutral</option>
+                            <option value="negative">Negative</option>
+                        </select>
+                    </div>
+                    <div id="recentEntries" class="entries-list">
+                        <div class="loading-state">Loading your entries...</div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Recent Entries Tab -->
+
+            <!-- Emotional Trends Tab -->
+            <div id="tab-trends" class="tab-content">
+                <div class="card">
+                    <h2>📈 Emotional Trends</h2>
+                    <canvas id="sentimentChart"></canvas>
+                </div>
+            </div>
+            <!-- End Emotional Trends Tab -->
+
+            <!-- Week Comparison Tab -->
+            <div id="tab-comparison" class="tab-content">
+                <div class="card">
+                    <h2>📊 Week-over-Week Comparison</h2>
+                    <div id="weekComparison" class="week-comparison">
+                        <div class="loading-state">Loading comparison...</div>
+                    </div>
+                </div>
+            </div>
+            <!-- End Week Comparison Tab -->
+
+            <!-- Export Data Tab -->
+            <div id="tab-export" class="tab-content">
+                <div class="card">
+                    <h2>📦 Export Data</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">Download your journal entries for
+                        backup or personal records.</p>
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="exportJsonBtn" class="btn btn-secondary" style="flex: 1;">
+                            Export as JSON 📄
+                        </button>
+                        <button id="exportPdfBtn" class="btn btn-secondary" style="flex: 1;">
+                            Export as Text 📝
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- End Export Data Tab -->
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Journal Entry</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editForm">
+                <textarea id="editContent" rows="10" placeholder="Edit your journal entry..."></textarea>
+                <div class="character-counter" id="editCharacterCounter">0 characters</div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Save Changes</span>
+                        <span class="btn-loader"></span>
+                    </button>
+                    <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- PHASE 4: Floating AI Assistant Widget -->
+<!-- CHAT PANEL TEMPORARILY REMOVED - Only floating button remains -->
+<div class="chat-widget-container">
+    <!-- Floating AI Assistant Button - Right Edge -->
+    <button class="chat-widget-button" onclick="toggleChatPanel()" aria-label="Open Wellness Assistant">
+        <!-- AI Brain/Sparkle Icon -->
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+            <line x1="8" y1="22" x2="16" y2="22"></line>
+        </svg>
+        <span class="chat-widget-badge" id="chatBadge" style="display: none;">1</span>
+    </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+
+<script>
+    // Tab Switching Function
+    function switchTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(function (tab) {
+            tab.classList.remove('active');
+        });
+
+        // Remove active from all buttons
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        var selectedTab = document.getElementById('tab-' + tabName);
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+        }
+
+        // Activate clicked button
+        if (event && event.target) {
+            event.target.classList.add('active');
+        }
+    }
+</script>
+{% endblock %}
